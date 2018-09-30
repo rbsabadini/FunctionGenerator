@@ -27,6 +27,17 @@ RP0		    EQU			H'05'
 RP1		    EQU			H'06'
 IRP		    EQU			H'07'
 		    
+;---- INTCON BITS --------------------------------------------------------------
+		    
+RBIF		    EQU			H'00'
+INTF		    EQU			H'01'
+T0IF		    EQU			H'02'
+RBIE		    EQU			H'03'
+INTE		    EQU			H'04'
+T0IE		    EQU			H'05'
+PEIE		    EQU			H'06'
+GIE		    EQU			H'07'
+		    
 ;------------------------------------------------------------------------------;
 ;									       ;
 ;			    CONFIGURATION BITS				       ;
