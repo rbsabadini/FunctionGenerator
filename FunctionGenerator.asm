@@ -11,7 +11,11 @@
 		    W_TEMP
 		    STATUS_TEMP
 		    ENDC
-    
+
+;---- INPUT --------------------------------------------------------------------		    
+		    
+#define		    BUTTON_INC		PORTD, RD0
+#define		    BUTTON_DEC		PORTD, RD1		    
 		    
 ;---- RESET VECTOR -------------------------------------------------------------
 		    ORG			H'0000'
@@ -23,7 +27,7 @@
 			
 ;----- SAVING CONTEXT ----------------------------------------------------------
 			
-		    MOVWF		W_TEMP				; Copy W to TEMP register
+		    MOVWF		W_TEMP					; Copy W to TEMP register
 		    SWAPF		STATUS,W				; Swap status to be saved into W										; Swaps are used because they do not affect the status bits
 		    MOVWF	        STATUS_TEMP			        ; Save status to bank zero STATUS_TEMP register
 						
@@ -32,13 +36,19 @@
 		    BTFSS		INTCON,2
 		    GOTO		exit_ISR
 		    BCF			INTCON,2
-				
+		    
+		    BTFSS		BUTTON_INC
+		    CALL		inc_PWM
+		    
+		    BTFSS		BUTTON_DEC
+		    CALL		dec_PWM
+		    			
 ;----- EXITING INTERRUPT SERVICE ROUTINE ---------------------------------------
 exit_ISR:			
 	
-		    SWAPF		STATUS_TEMP,W			; Swap STATUS_TEMP register into W
+		    SWAPF		STATUS_TEMP,W				; Swap STATUS_TEMP register into W
 										; (sets bank to original state)
-		    MOVWF		STATUS				; Move W into STATUS register
+		    MOVWF		STATUS					; Move W into STATUS register
 		    SWAPF		W_TEMP,f				; Swap W_TEMP
 		    SWAPF	        W_TEMP,w				; Swap W_TEMP into W
     
@@ -50,6 +60,7 @@ setup:
 		    MOVLW		H'70'
 		    MOVWF		OSCCON
 		    
+		    CALL		setup_buttons
 		    CALL		setup_PWM
 		    CALL		setup_TMR0
 		    
@@ -58,6 +69,90 @@ loop:
 		    GOTO		$
 
 ;---- SUBROTINE ----------------------------------------------------------------
+		    
+inc_PWM:
+		    BSF			STATUS, RP0
+		    BCF			STATUS, RP1
+    
+		    MOVLW		H'FF'
+		    XORWF		PR2, W
+		    BTFSS		STATUS, Z
+		    CALL		inc_PR2
+    
+		    BCF			STATUS, RP0
+		    
+		    RETURN
+		    
+inc_PR2:
+		    INCF		PR2
+		    
+		    BCF			STATUS, RP0
+		    
+		    MOVLW		H'2C'
+		    XORWF		CCP1CON, W
+		    
+		    BTFSC		STATUS, Z
+		    GOTO		inc_CCP1CON_CCPR1L
+		    
+		    MOVLW		H'2C'
+		    MOVWF		CCP1CON
+		    
+		    RETURN
+		    
+inc_CCP1CON_CCPR1L:
+    
+		    INCF		CCPR1L
+		    MOVLW		H'0C'
+		    MOVWF		CCP1CON
+		    
+		    GOTO		exit_ISR
+dec_PWM:
+    
+		    BSF			STATUS, RP0
+		    BCF			STATUS, RP1
+    
+		    MOVLW		H'00'
+		    XORWF		PR2, W
+		    BTFSS		STATUS, Z
+		    CALL		dec_PR2
+    
+		    BCF			STATUS, RP0
+		    
+		    RETURN
+		    
+dec_PR2:		
+		    DECF		PR2
+		    
+		    BCF			STATUS, RP0
+		    
+		    MOVLW		H'2C'
+		    XORWF		CCP1CON, W
+		    
+		    BTFSS		STATUS, Z
+		    GOTO		dec_CCP1CON_CCPR1L
+		    
+		    MOVLW		H'0C'
+		    MOVWF		CCP1CON
+		    
+		    RETURN
+		    
+dec_CCP1CON_CCPR1L:
+		    DECF		CCPR1L
+		    MOVLW		H'2C'
+		    MOVWF		CCP1CON
+    
+		    GOTO		exit_ISR
+setup_buttons:
+		    BSF			STATUS, RP0
+		    BCF			STATUS, RP1
+		    
+		    MOVLW		H'FF'
+		    MOVWF		TRISD
+		    
+		    BCF			STATUS, RP0
+		    
+		    RETURN
+		    
 setup_TMR0:
 		    BSF			STATUS, RP0
 		    BCF			STATUS, RP1
@@ -72,7 +167,9 @@ setup_TMR0:
 		    
 		    MOVLW		H'00'
 		    MOVWF		TMR0
-		    return
+	
+		    RETURN
+		    
 setup_PWM:  
 		    BSF			STATUS, RP0
 		    BCF			STATUS, RP1
@@ -93,6 +190,5 @@ setup_PWM:
 		    MOVWF		T2CON
 		    
 		    RETURN
-		    
 		    
 		    END
